@@ -1,189 +1,94 @@
-const link = "http://api.weatherstack.com/current?access_key=335e3544859fae40cea97d3043df91ef";
+// state
+let currCity = "London";
+let units = "metric";
 
-const root = document.getElementById("root");
-const popup = document.getElementById("popup");
-const textInput = document.getElementById("text-input");
-const form = document.getElementById("form");
+// Selectors
+let city = document.querySelector(".weather__city");
+let datetime = document.querySelector(".weather__datetime");
+let weather__forecast = document.querySelector('.weather__forecast');
+let weather__temperature = document.querySelector(".weather__temperature");
+let weather__icon = document.querySelector(".weather__icon");
+let weather__minmax = document.querySelector(".weather__minmax")
+let weather__realfeel = document.querySelector('.weather__realfeel');
+let weather__humidity = document.querySelector('.weather__humidity');
+let weather__wind = document.querySelector('.weather__wind');
+let weather__pressure = document.querySelector('.weather__pressure');
 
-let store = {
-  city: "Minsk",
-  temperature: 0,
-  observationTime: "00:00 AM",
-  isDay: "yes",
-  description: "",
-  properties: {
-    cloudcover: {},
-    humidity: {},
-    windSpeed: {},
-    pressure: {},
-    uvIndex: {},
-    visibility: {},
-  },
-};
+// search
+document.querySelector(".weather__search").addEventListener('submit', e => {
+    let search = document.querySelector(".weather__searchform");
+    // prevent default action
+    e.preventDefault();
+    // change current city
+    currCity = search.value;
+    // get weather forecast 
+    getWeather();
+    // clear form
+    search.value = ""
+})
 
-const fetchData = async () => {
-  try {
-    const query = localStorage.getItem("query") || store.city;
-    const result = await fetch(`${link}&query=${query}`);
-    const data = await result.json();
+// units
+document.querySelector(".weather_unit_celsius").addEventListener('click', () => {
+    if(units !== "metric"){
+        // change to metric
+        units = "metric"
+        // get weather forecast 
+        getWeather()
+    }
+})
 
-    const {
-      current: {
-        cloudcover,
-        temperature,
-        humidity,
-        observation_time: observationTime,
-        pressure,
-        uv_index: uvIndex,
-        visibility,
-        is_day: isDay,
-        weather_descriptions: description,
-        wind_speed: windSpeed,
-      },
-      location: { name },
-    } = data;
+document.querySelector(".weather_unit_farenheit").addEventListener('click', () => {
+    if(units !== "imperial"){
+        // change to imperial
+        units = "imperial"
+        // get weather forecast 
+        getWeather()
+    }
+})
 
-    store = {
-      ...store,
-      isDay,
-      city: name,
-      temperature,
-      observationTime,
-      description: description[0],
-      properties: {
-        cloudcover: {
-          title: "cloudcover",
-          value: `${cloudcover}%`,
-          icon: "cloud.png",
-        },
-        humidity: {
-          title: "humidity",
-          value: `${humidity}%`,
-          icon: "humidity.png",
-        },
-        windSpeed: {
-          title: "wind speed",
-          value: `${windSpeed} km/h`,
-          icon: "wind.png",
-        },
-        pressure: {
-          title: "pressure",
-          value: `${pressure} %`,
-          icon: "gauge.png",
-        },
-        uvIndex: {
-          title: "uv Index",
-          value: `${uvIndex} / 100`,
-          icon: "uv-index.png",
-        },
-        visibility: {
-          title: "visibility",
-          value: `${visibility}%`,
-          icon: "visibility.png",
-        },
-      },
-    };
+function convertTimeStamp(timestamp, timezone){
+     const convertTimezone = timezone / 3600; // convert seconds to hours 
 
-    renderComponent();
-  } catch (err) {
-    console.log(err);
-  }
-};
+    const date = new Date(timestamp * 1000);
+    
+    const options = {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        timeZone: `Etc/GMT${convertTimezone >= 0 ? "-" : "+"}${Math.abs(convertTimezone)}`,
+        hour12: true,
+    }
+    return date.toLocaleString("en-US", options)
+   
+}
 
-const getImage = (description) => {
-  const value = description.toLowerCase();
+ 
 
-  switch (value) {
-    case "partly cloudy":
-      return "partly.png";
-    case "cloud":
-      return "cloud.png";
-    case "fog":
-      return "fog.png";
-    case "sunny":
-      return "sunny.png";
-    case "cloud":
-      return "cloud.png";
-    default:
-      return "the.png";
-  }
-};
+// convert country code to name
+function convertCountryCode(country){
+    let regionNames = new Intl.DisplayNames(["en"], {type: "region"});
+    return regionNames.of(country)
+}
 
-const renderProperty = (properties) => {
-  return Object.values(properties)
-    .map(({ title, value, icon }) => {
-      return `<div class="property">
-            <div class="property-icon">
-              <img src="./img/icons/${icon}" alt="">
-            </div>
-            <div class="property-info">
-              <div class="property-info__value">${value}</div>
-              <div class="property-info__description">${title}</div>
-            </div>
-          </div>`;
-    })
-    .join("");
-};
+function getWeather(){
+    const API_KEY = '64f60853740a1ee3ba20d0fb595c97d5'
 
-const markup = () => {
-  const { city, description, observationTime, temperature, isDay, properties } =
-    store;
-  const containerClass = isDay === "yes" ? "is-day" : "";
+fetch(`https://api.openweathermap.org/data/2.5/weather?q=${currCity}&appid=${API_KEY}&units=${units}`).then(res => res.json()).then(data => {
+    console.log(data)
+    city.innerHTML = `${data.name}, ${convertCountryCode(data.sys.country)}`
+    datetime.innerHTML = convertTimeStamp(data.dt, data.timezone); 
+    weather__forecast.innerHTML = `<p>${data.weather[0].main}`
+    weather__temperature.innerHTML = `${data.main.temp.toFixed()}&#176`
+    weather__icon.innerHTML = `   <img src="http://openweathermap.org/img/wn/${data.weather[0].icon}@4x.png" />`
+    weather__minmax.innerHTML = `<p>Min: ${data.main.temp_min.toFixed()}&#176</p><p>Max: ${data.main.temp_max.toFixed()}&#176</p>`
+    weather__realfeel.innerHTML = `${data.main.feels_like.toFixed()}&#176`
+    weather__humidity.innerHTML = `${data.main.humidity}%`
+    weather__wind.innerHTML = `${data.wind.speed} ${units === "imperial" ? "mph": "m/s"}` 
+    weather__pressure.innerHTML = `${data.main.pressure} hPa`
+})
+}
 
-  return `<div class="container ${containerClass}">
-            <div class="top">
-              <div class="city">
-                <div class="city-subtitle">Weather Today in</div>
-                  <div class="city-title" id="city">
-                  <span>${city}</span>
-                </div>
-              </div>
-              <div class="city-info">
-                <div class="top-left">
-                <img class="icon" src="./img/${getImage(description)}" alt="" />
-                <div class="description">${description}</div>
-              </div>
-            
-              <div class="top-right">
-                <div class="city-info__subtitle">as of ${observationTime}</div>
-                <div class="city-info__title">${temperature}°</div>
-              </div>
-            </div>
-          </div>
-        <div id="properties">${renderProperty(properties)}</div>
-      </div>`;
-};
-
-const togglePopupClass = () => {
-  popup.classList.toggle("active");
-};
-
-const renderComponent = () => {
-  root.innerHTML = markup();
-
-  const city = document.getElementById("city");
-  city.addEventListener("click", togglePopupClass);
-};
-
-const handleInput = (e) => {
-  store = {
-    ...store,
-    city: e.target.value,
-  };
-};
-
-const handleSubmit = (e) => {
-  e.preventDefault();
-  const value = store.city;
-
-  if (!value) return null;
-
-  localStorage.setItem("query", value);
-  fetchData();
-  togglePopupClass();
-};
-
-form.addEventListener("submit", handleSubmit);
-textInput.addEventListener("input", handleInput);
-
-fetchData();
+document.body.addEventListener('load', getWeather())
